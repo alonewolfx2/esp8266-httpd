@@ -8,6 +8,7 @@
 extern const char* page_index(HTTPRequest *, void*);
 extern const char* page_ssid(HTTPRequest *, void*);
 extern const char* page_404(HTTPRequest *, void*);
+extern const char* page_abc(HTTPRequest *, void*);
 
 URLRouter page_err_404 = {
 	"/404.html", page_404
@@ -15,7 +16,8 @@ URLRouter page_err_404 = {
 
 URLRouter router_urls[] = {
 	{"/", page_index},
-	{"/ssid", page_ssid}
+	{"/ssid", page_ssid},
+	{"/abc.html", page_abc}, //Your new URI
 };
 
 #endif

@@ -1,4 +1,3 @@
-
 #############################################################
 # Required variables for each makefile
 # Discard this section from all parent makefiles
@@ -6,15 +5,83 @@
 #   CSRCS (all "C" files in the dir)
 #   SUBDIRS (all subdirs with a Makefile)
 #   GEN_LIBS - list of libs to be generated ()
-#   GEN_IMAGES - list of images to be generated ()
+#   GEN_IMAGES - list of object file images to be generated ()
+#   GEN_BINS - list of binaries to be generated ()
 #   COMPONENTS_xxx - a list of libs/objs in the form
 #     subdir/lib to be extracted and rolled up into
 #     a generated lib/image xxx.a ()
 #
-ifndef PDIR
-GEN_LIBS = libuser.a
+TARGET = eagle
+#FLAVOR = release
+FLAVOR = debug
+
+#EXTRA_CCFLAGS += -u
+
+ifndef PDIR # {
+GEN_IMAGES= eagle.app.v6.out
+GEN_BINS= eagle.app.v6.bin
+SPECIAL_MKTARGETS=$(APP_MKTARGETS)
+SUBDIRS=    \
+	user
+
+endif # } PDIR
+
+APPDIR = .
+LDDIR = ../ld
+
+CCFLAGS += -Os
+
+TARGET_LDFLAGS =		\
+	-nostdlib		\
+	-Wl,-EL \
+	--longcalls \
+	--text-section-literals
+
+ifeq ($(FLAVOR),debug)
+    TARGET_LDFLAGS += -g -O2
 endif
 
+ifeq ($(FLAVOR),release)
+    TARGET_LDFLAGS += -g -O0
+endif
+
+LD_FILE = $(LDDIR)/eagle.app.v6.ld
+
+ifeq ($(APP), 1)
+	LD_FILE = $(LDDIR)/eagle.app.v6.app1.ld
+endif
+
+ifeq ($(APP), 2)
+	LD_FILE = $(LDDIR)/eagle.app.v6.app2.ld
+endif
+
+COMPONENTS_eagle.app.v6 = \
+	user/libuser.a
+
+LINKFLAGS_eagle.app.v6 = \
+	-L../lib        \
+	-nostdlib	\
+    -T$(LD_FILE)   \
+	-Wl,--no-check-sections	\
+    -u call_user_start	\
+	-Wl,-static						\
+	-Wl,--start-group					\
+	-lgcc					\
+	-lhal					\
+	-lphy	\
+	-lpp	\
+	-lnet80211	\
+	-lwpa	\
+	-lmain	\
+	-lfreertos	\
+	-llwip	\
+	-ludhcp	\
+	$(DEP_LIBS_eagle.app.v6)					\
+	-Wl,--end-group
+
+DEPENDS_eagle.app.v6 = \
+                $(LD_FILE) \
+                $(LDDIR)/eagle.rom.addr.v6.ld
 
 #############################################################
 # Configuration i.e. compile options etc.
@@ -23,7 +90,24 @@ endif
 #   makefile at its root level - these are then overridden
 #   for a subtree within the makefile rooted therein
 #
-#DEFINES += 
+
+#UNIVERSAL_TARGET_DEFINES =		\
+
+# Other potential configuration flags include:
+#	-DTXRX_TXBUF_DEBUG
+#	-DTXRX_RXBUF_DEBUG
+#	-DWLAN_CONFIG_CCX
+CONFIGURATION_DEFINES =	-D__ets__ \
+			-DICACHE_FLASH
+
+DEFINES +=				\
+	$(UNIVERSAL_TARGET_DEFINES)	\
+	$(CONFIGURATION_DEFINES)
+
+DDEFINES +=				\
+	$(UNIVERSAL_TARGET_DEFINES)	\
+	$(CONFIGURATION_DEFINES)
+
 
 #############################################################
 # Recursion Magic - Don't touch this!!
@@ -37,9 +121,20 @@ endif
 # Required for each makefile to inherit from the parent
 #
 
-INCLUDES := $(INCLUDES) -I /opt/xtensa-lx106-elf/lib/gcc/xtensa-lx106-elf/4.8.2/include/ -I $(PDIR)include
+INCLUDES := $(INCLUDES) -I $(PDIR)include
 INCLUDES += -I ./
-INCLUDES += -I ../../include/ets
 PDIR := ../$(PDIR)
 sinclude $(PDIR)Makefile
+
+#########################################################################
+#
+#  generate bin file
+#
+
+$(BINODIR)/%.bin: $(IMAGEODIR)/%.out
+	@mkdir -p $(BINODIR)
+	$(OBJCOPY) -O binary $< $@
+
+.PHONY: FORCE
+FORCE:
 
